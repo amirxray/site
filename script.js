@@ -1,3 +1,23 @@
+const {
+    FFmpeg
+} = FFmpegWASM;
+
+const {
+    fetchFile,
+    toBlobURL
+} = FFmpegUtil;
+
+
+const ffmpeg = new FFmpeg();
+
+
+let loaded = false;
+
+let file = null;
+
+let duration = 0;
+
+
 const fileInput =
     document.getElementById("fileInput");
 
@@ -37,22 +57,75 @@ const status =
 const download =
     document.getElementById("download");
 
+const progressBox =
+    document.getElementById("progressBox");
 
-let file = null;
+const progressBar =
+    document.getElementById("progressBar");
 
-let media = null;
 
-let duration = 0;
+async function loadFFmpeg() {
+
+    if (loaded)
+        return;
+
+
+    status.textContent =
+        "در حال آماده‌سازی موتور برش...";
+
+
+    ffmpeg.on(
+        "progress",
+        ({ progress }) => {
+
+            progressBar.style.width =
+                Math.round(progress * 100) + "%";
+
+        }
+    );
+
+
+    const baseURL =
+        "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd";
+
+
+    await ffmpeg.load({
+
+        coreURL:
+            await toBlobURL(
+                `${baseURL}/ffmpeg-core.js`,
+                "text/javascript"
+            ),
+
+        wasmURL:
+            await toBlobURL(
+                `${baseURL}/ffmpeg-core.wasm`,
+                "application/wasm"
+            )
+
+    });
+
+
+    loaded = true;
+
+    status.textContent =
+        "موتور آماده است ✅";
+}
 
 
 fileInput.addEventListener(
     "change",
-    function () {
+    () => {
 
-        if (!this.files.length)
+        if (
+            fileInput.files.length === 0
+        )
             return;
 
-        loadFile(this.files[0]);
+
+        loadFile(
+            fileInput.files[0]
+        );
 
     }
 );
@@ -62,6 +135,7 @@ function loadFile(selectedFile) {
 
     file = selectedFile;
 
+
     const url =
         URL.createObjectURL(file);
 
@@ -70,72 +144,90 @@ function loadFile(selectedFile) {
         file.name;
 
 
-    if (file.type.startsWith("video/")) {
+    if (
+        file.type.startsWith("video/")
+    ) {
 
-        video.classList.remove("hidden");
+        video.classList.remove(
+            "hidden"
+        );
 
-        audio.classList.add("hidden");
+        audio.classList.add(
+            "hidden"
+        );
 
         video.src = url;
 
-        media = video;
+        video.onloadedmetadata =
+            setupMedia;
 
     } else {
 
-        audio.classList.remove("hidden");
+        audio.classList.remove(
+            "hidden"
+        );
 
-        video.classList.add("hidden");
+        video.classList.add(
+            "hidden"
+        );
 
         audio.src = url;
 
-        media = audio;
-
+        audio.onloadedmetadata =
+            setupMedia;
     }
 
 
-    media.onloadedmetadata =
-        function () {
-
-            duration =
-                media.duration;
+    editor.classList.remove(
+        "hidden"
+    );
 
 
-            start.value = 0;
-
-            end.value =
-                duration.toFixed(1);
-
-
-            startRange.max =
-                duration;
-
-            endRange.max =
-                duration;
+    download.classList.add(
+        "hidden"
+    );
+}
 
 
-            startRange.value = 0;
+function setupMedia() {
 
-            endRange.value =
-                duration;
-
-
-            editor.classList.remove("hidden");
+    duration =
+        this.duration;
 
 
-            status.textContent =
-                "فایل آماده برش است.";
+    start.value =
+        0;
 
-        };
 
+    end.value =
+        duration.toFixed(1);
+
+
+    startRange.max =
+        duration;
+
+    endRange.max =
+        duration;
+
+
+    startRange.value =
+        0;
+
+    endRange.value =
+        duration;
+
+
+    status.textContent =
+        "فایل آماده برش است.";
 }
 
 
 startRange.addEventListener(
     "input",
-    function () {
+    () => {
 
         start.value =
-            this.value;
+            startRange.value;
 
     }
 );
@@ -143,10 +235,10 @@ startRange.addEventListener(
 
 endRange.addEventListener(
     "input",
-    function () {
+    () => {
 
         end.value =
-            this.value;
+            endRange.value;
 
     }
 );
@@ -154,10 +246,10 @@ endRange.addEventListener(
 
 start.addEventListener(
     "input",
-    function () {
+    () => {
 
         startRange.value =
-            this.value;
+            start.value;
 
     }
 );
@@ -165,10 +257,10 @@ start.addEventListener(
 
 end.addEventListener(
     "input",
-    function () {
+    () => {
 
         endRange.value =
-            this.value;
+            end.value;
 
     }
 );
@@ -176,7 +268,7 @@ end.addEventListener(
 
 cutButton.addEventListener(
     "click",
-    async function () {
+    async () => {
 
         if (!file)
             return;
@@ -196,29 +288,131 @@ cutButton.addEventListener(
         ) {
 
             status.textContent =
-                "زمان شروع و پایان را درست وارد کنید.";
+                "زمان شروع و پایان صحیح نیست.";
 
             return;
-
         }
-
-
-        status.textContent =
-            "در حال آماده‌سازی برش...";
 
 
         try {
 
-            const result =
-                await cutMedia(
-                    media,
-                    startTime,
-                    endTime
+            cutButton.disabled =
+                true;
+
+
+            progressBox.classList.remove(
+                "hidden"
+            );
+
+
+            progressBar.style.width =
+                "0%";
+
+
+            await loadFFmpeg();
+
+
+            status.textContent =
+                "در حال برش فایل...";
+
+
+            const inputName =
+                "input" +
+                getExtension(file.name);
+
+
+            const outputName =
+                file.type.startsWith("video/")
+                    ? "output.mp4"
+                    : "output.mp3";
+
+
+            await ffmpeg.writeFile(
+                inputName,
+                await fetchFile(file)
+            );
+
+
+            if (
+                file.type.startsWith("video/")
+            ) {
+
+                await ffmpeg.exec([
+
+                    "-ss",
+                    String(startTime),
+
+                    "-i",
+                    inputName,
+
+                    "-t",
+                    String(
+                        endTime - startTime
+                    ),
+
+                    "-c:v",
+                    "libx264",
+
+                    "-c:a",
+                    "aac",
+
+                    "-preset",
+                    "veryfast",
+
+                    outputName
+
+                ]);
+
+            } else {
+
+                await ffmpeg.exec([
+
+                    "-ss",
+                    String(startTime),
+
+                    "-i",
+                    inputName,
+
+                    "-t",
+                    String(
+                        endTime - startTime
+                    ),
+
+                    "-vn",
+
+                    "-c:a",
+                    "libmp3lame",
+
+                    "-b:a",
+                    "192k",
+
+                    outputName
+
+                ]);
+
+            }
+
+
+            const data =
+                await ffmpeg.readFile(
+                    outputName
+                );
+
+
+            const blob =
+                new Blob(
+                    [data.buffer],
+                    {
+                        type:
+                            file.type.startsWith("video/")
+                                ? "video/mp4"
+                                : "audio/mpeg"
+                    }
                 );
 
 
             const url =
-                URL.createObjectURL(result);
+                URL.createObjectURL(blob);
 
 
             download.href =
@@ -226,7 +420,9 @@ cutButton.addEventListener(
 
 
             download.download =
-                "amirxray-cut.webm";
+                file.type.startsWith("video/")
+                    ? "amirxray-cut.mp4"
+                    : "amirxray-cut.mp3";
 
 
             download.classList.remove(
@@ -242,9 +438,17 @@ cutButton.addEventListener(
 
             console.error(error);
 
-
             status.textContent =
-                "مرورگر شما امکان برش این فایل را ندارد.";
+                "خطا در پردازش فایل ❌";
+
+        } finally {
+
+            cutButton.disabled =
+                false;
+
+            progressBox.classList.add(
+                "hidden"
+            );
 
         }
 
@@ -252,119 +456,18 @@ cutButton.addEventListener(
 );
 
 
-async function cutMedia(
-    element,
-    startTime,
-    endTime
-) {
+function getExtension(name) {
 
-    const stream =
-        element.captureStream();
+    const index =
+        name.lastIndexOf(".");
 
 
-    if (!stream) {
-
-        throw new Error(
-            "captureStream not supported"
-        );
-
-    }
+    if (index === -1)
+        return ".bin";
 
 
-    let mimeType;
-
-
-    if (
-        element.tagName === "VIDEO"
-    ) {
-
-        mimeType =
-            "video/webm";
-
-    } else {
-
-        mimeType =
-            "audio/webm";
-
-    }
-
-
-    const recorder =
-        new MediaRecorder(
-            stream,
-            {
-                mimeType: mimeType
-            }
-        );
-
-
-    const chunks = [];
-
-
-    recorder.ondataavailable =
-        function (event) {
-
-            if (event.data.size > 0) {
-
-                chunks.push(
-                    event.data
-                );
-
-            }
-
-        };
-
-
-    element.currentTime =
-        startTime;
-
-
-    await new Promise(
-        resolve => {
-
-            element.onseeked =
-                resolve;
-
-        }
-    );
-
-
-    return new Promise(
-        async resolve => {
-
-            recorder.onstop =
-                function () {
-
-                    resolve(
-                        new Blob(
-                            chunks,
-                            {
-                                type: mimeType
-                            }
-                        )
-                    );
-
-                };
-
-
-            recorder.start();
-
-
-            await element.play();
-
-
-            setTimeout(
-                function () {
-
-                    element.pause();
-
-                    recorder.stop();
-
-                },
-                (endTime - startTime) * 1000
-            );
-
-        }
+    return name.substring(
+        index
     );
 
 }
@@ -372,7 +475,7 @@ async function cutMedia(
 
 resetButton.addEventListener(
     "click",
-    function () {
+    () => {
 
         location.reload();
 
