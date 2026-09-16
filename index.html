@@ -7,162 +7,183 @@
     <title>AmirXray Cutter</title>
 
     <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 </head>
 
 <body>
 
-    <div class="container">
+<div class="container">
 
-        <header>
-            <div class="logo">✂️</div>
+    <header>
+        <div class="logo">✂️</div>
 
-            <div>
-                <h1>AmirXray Cutter</h1>
-                <p>برش ویدیو و آهنگ آنلاین</p>
+        <div>
+            <h1>AmirXray Cutter</h1>
+            <p>برش ویدیو و آهنگ آنلاین</p>
+        </div>
+    </header>
+
+
+    <div class="card">
+
+        <label class="upload-box">
+
+            <input
+                type="file"
+                id="fileInput"
+                accept="video/*,audio/*"
+            >
+
+            <div class="upload-icon">📁</div>
+
+            <h2>فایل خود را انتخاب کنید</h2>
+
+            <p>
+                MP4، MP3، WAV، MOV و فرمت‌های دیگر
+            </p>
+
+        </label>
+
+
+        <div id="editor" class="hidden">
+
+            <div id="fileName" class="file-name"></div>
+
+
+            <video
+                id="video"
+                class="media hidden"
+                controls
+            ></video>
+
+
+            <audio
+                id="audio"
+                class="audio hidden"
+                controls
+            ></audio>
+
+
+            <div class="controls">
+
+                <div class="time-input">
+
+                    <label>
+                        شروع
+                    </label>
+
+                    <input
+                        id="start"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value="0"
+                    >
+
+                </div>
+
+
+                <div class="time-input">
+
+                    <label>
+                        پایان
+                    </label>
+
+                    <input
+                        id="end"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value="0"
+                    >
+
+                </div>
+
             </div>
-        </header>
 
-        <div class="card">
 
-            <label class="upload-box">
+            <div class="timeline">
 
                 <input
-                    type="file"
-                    id="fileInput"
-                    accept="video/*,audio/*"
+                    id="startRange"
+                    type="range"
+                    min="0"
+                    value="0"
+                    step="0.1"
                 >
 
-                <div class="upload-icon">📁</div>
-
-                <h2>فایل خود را انتخاب کنید</h2>
-
-                <p>
-                    ویدیو یا آهنگ را انتخاب کنید
-                </p>
-
-            </label>
-
-
-            <div id="editor" class="hidden">
-
-                <div class="file-name" id="fileName"></div>
-
-                <video
-                    id="video"
-                    class="media hidden"
-                    controls
-                ></video>
-
-                <audio
-                    id="audio"
-                    class="audio hidden"
-                    controls
-                ></audio>
-
-
-                <div class="controls">
-
-                    <div class="time-input">
-
-                        <label>
-                            زمان شروع
-                        </label>
-
-                        <input
-                            type="number"
-                            id="start"
-                            value="0"
-                            min="0"
-                            step="0.1"
-                        >
-
-                    </div>
-
-
-                    <div class="time-input">
-
-                        <label>
-                            زمان پایان
-                        </label>
-
-                        <input
-                            type="number"
-                            id="end"
-                            value="0"
-                            min="0"
-                            step="0.1"
-                        >
-
-                    </div>
-
-                </div>
-
-
-                <div class="timeline">
-
-                    <input
-                        type="range"
-                        id="startRange"
-                        min="0"
-                        value="0"
-                        step="0.1"
-                    >
-
-                    <input
-                        type="range"
-                        id="endRange"
-                        min="0"
-                        value="0"
-                        step="0.1"
-                    >
-
-                </div>
-
-
-                <div class="buttons">
-
-                    <button
-                        id="cutButton"
-                        class="cut"
-                    >
-                        ✂️ برش فایل
-                    </button>
-
-
-                    <button
-                        id="resetButton"
-                        class="reset"
-                    >
-                        🔄 فایل جدید
-                    </button>
-
-                </div>
-
-
-                <div id="status"></div>
-
-
-                <a
-                    id="download"
-                    class="download hidden"
-                    download
+                <input
+                    id="endRange"
+                    type="range"
+                    min="0"
+                    value="0"
+                    step="0.1"
                 >
-                    ⬇️ دانلود فایل
-                </a>
 
             </div>
 
+
+            <div class="buttons">
+
+                <button
+                    id="cutButton"
+                    class="cut"
+                >
+                    ✂️ برش فایل
+                </button>
+
+
+                <button
+                    id="resetButton"
+                    class="reset"
+                >
+                    🔄 فایل جدید
+                </button>
+
+            </div>
+
+
+            <div
+                id="progressBox"
+                class="hidden"
+            >
+
+                <div id="progressText">
+                    در حال پردازش...
+                </div>
+
+                <div class="progress">
+                    <div id="progressBar"></div>
+                </div>
+
+            </div>
+
+
+            <div id="status"></div>
+
+
+            <a
+                id="download"
+                class="download hidden"
+            >
+                ⬇️ دانلود فایل بریده‌شده
+            </a>
+
         </div>
-
-
-        <footer>
-            فایل شما روی سرور آپلود نمی‌شود.
-        </footer>
 
     </div>
 
 
-    <script src="script.js"></script>
+    <footer>
+        فایل شما برای پردازش به سرور ارسال نمی‌شود.
+    </footer>
+
+</div>
+
+
+<script src="script.js"></script>
 
 </body>
 </html>
